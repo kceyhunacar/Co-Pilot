@@ -3,26 +3,21 @@
 use App\Http\Controllers\Backend\AdminsController;
 use App\Http\Controllers\Backend\Auth\LoginController;
 use App\Http\Controllers\Backend\CharterController;
-use App\Http\Controllers\Backend\CityController;
+ 
 use App\Http\Controllers\Backend\DashboardController;
 use App\Http\Controllers\Backend\DestinationController;
 use App\Http\Controllers\Backend\FeatureCategoryController;
 use App\Http\Controllers\Backend\FeatureController;
-use App\Http\Controllers\Backend\HospitalController;
-use App\Http\Controllers\Backend\InvoiceController;
-use App\Http\Controllers\Backend\OperationController;
-use App\Http\Controllers\Backend\PartnerController;
-use App\Http\Controllers\Backend\PatientController;
-use App\Http\Controllers\Backend\IncomeController;
-use App\Http\Controllers\Backend\PortController;
+ 
+ 
 use App\Http\Controllers\Backend\RolesController;
 use App\Http\Controllers\Backend\TypeController;
 use App\Http\Controllers\Backend\UsersController;
-use App\Http\Controllers\Backend\VesselController;
+ 
 use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use SebastianBergmann\CodeCoverage\Report\Html\Dashboard;
+ 
 
 /*
 |--------------------------------------------------------------------------
@@ -38,8 +33,7 @@ use SebastianBergmann\CodeCoverage\Report\Html\Dashboard;
 // Route::get('/', function () {
 //     return view('welcome');
 // });
-
-Auth::routes();
+ 
 
 Route::get('/', [HomeController::class, 'redirectAdmin'])->name('index');
 Route::get('/home', [HomeController::class, 'index'])->name('home');
@@ -48,10 +42,7 @@ Route::get('/home', [HomeController::class, 'index'])->name('home');
  * Admin routes
  */
 Route::group(['prefix' => 'admin'], function () {
-
-
-    Route::resource('port', PortController::class, ['names' => 'admin.port']);
-    Route::get('/port/delete/{id?}', [PortController::class, 'delete'])->name('admin.port.delete');
+ 
 
     Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
     Route::resource('roles', RolesController::class, ['names' => 'admin.roles']);

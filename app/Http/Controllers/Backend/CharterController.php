@@ -112,8 +112,8 @@ class CharterController extends Controller
             foreach ($request->photos as $photo) {
 
                 $file_name = uniqid() . '.' . $photo->getClientOriginalExtension();
-                $photo->move(public_path('data/uploads/charter/'),$file_name);
-               
+                $photo->move(public_path('data/uploads/charter/'), $file_name);
+
                 $charter->getPhotos()->create([
                     'path' =>  'data/uploads/charter/' . $file_name
                 ]);
@@ -158,7 +158,7 @@ class CharterController extends Controller
      */
     public function update(Request $request, Charter $charter)
     {
- 
+
         $charter = Charter::with(['getPrice', 'getPhotos', 'getFeature'])->where('id', $charter->id)->first();
 
         $charter->fill([
@@ -171,25 +171,26 @@ class CharterController extends Controller
 
         foreach ($request->feature as $key => $value) {
 
-            $charter->getFeature()->updateOrCreate([
-                'charter' => $charter->id,
-                'feature' => $key,
-            ],
-            [
-                'charter' => $charter->id,
-                'feature' => $key,
-                'value' => $value,
-
-            ]);
+            $charter->getFeature()->updateOrCreate(
+                [
+                    'charter' => $charter->id,
+                    'feature' => $key,
+                ],
+                [
+                    'charter' => $charter->id,
+                    'feature' => $key,
+                    'value' => $value,
+                ]
+            );
         }
 
-        $prices =[];
+        $prices = [];
         foreach ($request->price as $key => $value) {
-         
+
             $prices[$key] = $value;
         }
-     
-        $charter->getPrice()->updateOrCreate(['charter'=>$charter->id], $prices);
+
+        $charter->getPrice()->updateOrCreate(['charter' => $charter->id], $prices);
 
 
 
@@ -198,8 +199,8 @@ class CharterController extends Controller
             foreach ($request->photos as $photo) {
 
                 $file_name = uniqid() . '.' . $photo->getClientOriginalExtension();
-                $photo->move(public_path('data/uploads/charter/'),$file_name);
-               
+                $photo->move(public_path('data/uploads/charter/'), $file_name);
+
                 $charter->getPhotos()->create([
                     'path' =>  'data/uploads/charter/' . $file_name
                 ]);

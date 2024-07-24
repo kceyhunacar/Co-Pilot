@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\TranslateMethods;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -12,7 +13,7 @@ use Spatie\Translatable\HasTranslations;
 class Charter extends Model
 {
 
-    use HasFactory,HasTranslations,SoftDeletes, LogsActivity;
+    use HasFactory,HasTranslations,SoftDeletes, LogsActivity,TranslateMethods;
 
     protected $guarded = [];
     public $translatable = ['description'];
@@ -26,15 +27,27 @@ class Charter extends Model
 
     public function getDestination()
     {
-        return $this->hasOne(Destination::class, 'destination', 'id');
+        return $this->hasOne(Destination::class, 'id', 'destination');
+    }
+    public function getType()
+    {
+        return $this->hasOne(Type::class, 'id', 'type');
     }
     public function getFeature()
     {
         return $this->hasMany(CharterFeature::class, 'charter', 'id');
     }
+    public function getBooking()
+    {
+        return $this->hasMany(Booking::class, 'charter', 'id');
+    }
     public function getPrice()
     {
         return $this->hasOne(CharterPrice::class, 'charter', 'id');
+    }
+    public function getSetting()
+    {
+        return $this->hasOne(CharterSetting::class, 'charter', 'id');
     }
     public function getPhotos()
     {

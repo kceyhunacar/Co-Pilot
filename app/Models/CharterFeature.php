@@ -20,4 +20,11 @@ class CharterFeature extends Model
         return LogOptions::defaults()
             ->logOnly(['*']);
     }
+
+    public function getCategory()
+    {
+        return $this->hasOne(Feature::class, 'id', 'feature');
+    }
+
+
 }

@@ -83,11 +83,11 @@ return [
     |
     */
 
-    'locale' => 'tr',
-    'locales' => [
-        'en'=>'English',
-        'tr'=>'Turkish'
-    ],
+    'locale' => 'en',
+    // 'locales' => [
+    //     'en'=>'English',
+    //     'tr'=>'Turkish'
+    // ],
     'types' => [
         0=>'Text',
         1=>'Number',

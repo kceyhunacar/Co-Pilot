@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\TranslateMethods;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -11,7 +12,7 @@ use Spatie\Translatable\HasTranslations;
 
 class Feature extends Model
 {
-    use HasFactory,HasTranslations,SoftDeletes, LogsActivity;
+    use HasFactory,HasTranslations,SoftDeletes, LogsActivity,TranslateMethods;
 
     protected $guarded = [];
     public $translatable = ['title'];
@@ -21,4 +22,15 @@ class Feature extends Model
         return LogOptions::defaults()
             ->logOnly(['*']);
     }
+
+
+    public function getCategory()
+    {
+        return $this->hasOne(FeatureCategory::class, 'id', 'category');
+    }
+
+
+
+   
+
 }

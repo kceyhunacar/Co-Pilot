@@ -11,6 +11,7 @@ use App\Models\Feature;
 use App\Models\FeatureCategory;
 use App\Models\Type;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -92,13 +93,22 @@ class CharterController extends Controller
     public function getCharterByIdWithoutUser(Request $request)
     {
 
-        $charter = Charter::with(['getDestination','getType','getSetting', 'getPrice', 'getFeature.getCategory.getCategory', 'getPhotos', 'getBooking'])->where('id', $request->get('id'))->first();
+        $charter = Charter::with(['getDestination', 'getType', 'getSetting', 'getPrice', 'getFeature.getCategory.getCategory', 'getPhotos', 'getBooking'])->where('id', $request->get('id'))->first();
 
         return response()->json([
             'charter' => $charter
         ]);
     }
 
+    public function getCharterHighlighted()
+    {
+
+        $charter = Charter::with(['getSetting', 'getPrice', 'getFeature', 'getPhotos', 'getDestination', 'getType'])->where('highlighted', 1)->get();
+
+        return response()->json([
+            'charter' => $charter,
+        ]);
+    }
 
 
     public function getQuantityInput()
@@ -175,8 +185,6 @@ class CharterController extends Controller
 
 
         ]);
-
-
 
 
         foreach ($request->price as $item) {
@@ -341,6 +349,91 @@ class CharterController extends Controller
 
         return response()->json([
             'createCharter' => $dates
+        ]);
+    }
+
+
+
+
+
+    public function bookingStatus(Request $request)
+    {
+
+        $booking = Booking::with('getUser')->where('id', $request->id)->first();
+        $booking->fill([
+            "status" => $request->status
+        ]);
+        $booking->save();
+
+        return response()->json([
+            'booking' => $booking
+        ]);
+    }
+
+
+    public  function  getCharterFiltered(Request $request)
+    {
+
+
+        $filter = [];
+
+        if ($request->destination != null && $request->destination != 0) {
+            array_push($filter, ['destination', '=', $request->destination]);
+        }
+        if ($request->type != null && $request->type != 0) {
+            array_push($filter, ['type', '=', $request->type]);
+        }
+
+        // if ($request->startDate != null) {
+
+        //     $from = \Carbon\Carbon::parse($request->startDate);
+        //     $to = \Carbon\Carbon::parse($request->get('to'));
+
+        //     $f = $from->format('d-m-Y');
+        //     $t = $to->format('d-m-Y');
+
+        //     $period = CarbonPeriod::create($f, $t);
+
+        //     foreach ($period as $date) {
+        //         array_push($filter, ['unavaliable_days', 'NOT LIKE', '%' . $date->format('d-m-Y') . '%']);
+        //     }
+        // }
+
+
+        // if ($request->get('min') != null) {
+        //     array_push($filter, [$price, '>', ($request->get('min') / Cache::get('rates')['EUR'])-1]);
+        // }
+        // if ($request->get('max') != null && $request->get('max')<500000) {
+        //     array_push($filter, [$price, '<', ($request->get('max') / Cache::get('rates')['EUR'])+1]);
+        // }
+
+        $start_date = Carbon::parse($request->startDate)->format("Y-m-d");
+        $end_date = Carbon::parse($request->endDate)->format("Y-m-d");
+        $period = CarbonPeriod::create($start_date, $end_date);
+
+        $charter = Charter::with(['getType', 'getBooking', 'getDestination', 'getPrice', 'getFeature', 'getPhotos', 'getSetting']) 
+      
+            ->where($filter)
+
+            ->whereDoesntHave('getBooking', function ($q) use ($period) {
+
+               
+
+                foreach ($period as $date) {
+                    // array_push($filter, ['unavaliable_days', 'NOT LIKE', '%' . $date->format('d-m-Y') . '%']);
+                    $q->where('dates', "LIKE", '%' . Carbon::parse($date)->format("Y-m-d") . '%');
+                }
+
+           
+            })
+
+            ->get();
+
+
+
+
+        return response()->json([
+            'charter' => $charter,
         ]);
     }
 }

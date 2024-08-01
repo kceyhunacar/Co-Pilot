@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('slug')->nullable();
             $table->string('user')->nullable();
             $table->string('destination')->nullable();
+            $table->integer('highlighted')->nullable();
             $table->integer('status')->default(1);
         });
     }

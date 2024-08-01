@@ -27,6 +27,8 @@ return new class extends Migration
             $table->date('check_in')->nullable();
             $table->date('check_out')->nullable();
             $table->json('dates')->nullable();
+            $table->json('status')->nullable();
+            
         });
     }
 

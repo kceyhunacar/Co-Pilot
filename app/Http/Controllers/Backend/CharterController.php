@@ -125,7 +125,7 @@ class CharterController extends Controller
 
 
         session()->flash('success', 'Charter has been created.');
-        return back();
+        return redirect()->back();
     }
 
     /**
@@ -209,7 +209,7 @@ class CharterController extends Controller
 
 
         session()->flash('success', 'Charter has been updated.');
-        return back();
+        return redirect()->back();
     }
 
 
@@ -221,7 +221,7 @@ class CharterController extends Controller
         $charter->delete();
         session()->flash('success', 'Charter has been deleted.');
 
-        return back();
+        return redirect()->back();
     }
 
 

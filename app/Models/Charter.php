@@ -31,7 +31,7 @@ class Charter extends Model
     }
     public function getType()
     {
-        return $this->hasOne(Type::class, 'id', 'type');
+        return $this->hasOne(Type::class, 'id', 'type')->orderBy('sort', 'desc');
     }
     public function getFeature()
     {

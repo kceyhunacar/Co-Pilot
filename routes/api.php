@@ -32,6 +32,8 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 // logout is a protected endpoint
 Route::get('/getCharterByIdWithoutUser', [CharterController::class, 'getCharterByIdWithoutUser']);
+Route::get('/getCharterHighlighted', [CharterController::class, 'getCharterHighlighted']);
+Route::post('/getCharterFiltered', [CharterController::class, 'getCharterFiltered']);
 Route::group(["middleware"=>['auth:sanctum']], function () {
     Route::post('/createCharter', [CharterController::class, 'createCharter']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -43,6 +45,8 @@ Route::group(["middleware"=>['auth:sanctum']], function () {
     Route::post('/charterPhotoDelete', [CharterController::class, 'charterPhotoDelete']);
     Route::post('/updateCharter', [CharterController::class, 'updateCharter']);
     Route::post('/createBooking', [CharterController::class, 'createBooking']);
+    Route::post('/bookingStatus', [CharterController::class, 'bookingStatus']);
+ 
 
 
 });

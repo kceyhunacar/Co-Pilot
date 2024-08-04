@@ -40,6 +40,7 @@ Route::group(["middleware"=>['auth:sanctum']], function () {
     Route::get('/getCharter', [CharterController::class, 'getCharter']);
     Route::get('/getCharterWithHighlighted', [CharterController::class, 'getCharterWithHighlighted']);
     Route::get('/getCharterById', [CharterController::class, 'getCharterById']);
+    Route::get('/getNotification', [CharterController::class, 'getNotification']);
 
     Route::get('/getCharterWithPriceBooking', [CharterController::class, 'getCharterWithPriceBooking']);
     Route::post('/charterPhotoDelete', [CharterController::class, 'charterPhotoDelete']);

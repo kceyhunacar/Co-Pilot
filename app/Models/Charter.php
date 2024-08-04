@@ -13,7 +13,7 @@ use Spatie\Translatable\HasTranslations;
 class Charter extends Model
 {
 
-    use HasFactory,HasTranslations,SoftDeletes, LogsActivity,TranslateMethods;
+    use HasFactory, HasTranslations, SoftDeletes, LogsActivity, TranslateMethods;
 
     protected $guarded = [];
     public $translatable = ['description'];
@@ -54,7 +54,23 @@ class Charter extends Model
         return $this->hasMany(CharterPhoto::class, 'charter', 'id');
     }
 
+    // public function scopeSortType($query, $type,$month="0")
+    // {
+ 
+    //     switch ($type) {
+    //         case 'default':
+    //             return $query->orderBy('created_at', 'DESC');
+    //             break;
+    //         case 'low_price':
+    //             return $query->orderBy($month, 'ASC');
+    //             break;
+    //         case 'high_price':
+    //             return $query->orderBy($month, 'DESC');
+    //             break;
 
-
+    //         default:
+    //             return $query;
+    //             break;
+    //     }
+    // }
 }
-

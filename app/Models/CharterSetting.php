@@ -20,4 +20,6 @@ class CharterSetting extends Model
         return LogOptions::defaults()
             ->logOnly(['*']);
     }
+
+    
 }

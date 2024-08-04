@@ -9,6 +9,7 @@ use App\Models\CharterPhoto;
 use App\Models\Destination;
 use App\Models\Feature;
 use App\Models\FeatureCategory;
+use App\Models\Notification;
 use App\Models\Type;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -346,6 +347,25 @@ class CharterController extends Controller
             'dates' => json_encode($dates),
         ]);
 
+        $notifiArr = [];
+        array_push($notifiArr, $charter->user);
+        array_push($notifiArr, $request->user()->id);
+        foreach (array_unique($notifiArr) as $item) {
+
+            $notification = new Notification();
+
+            $notification->fill([
+                'title' => "Rezervasyon Talebi Oluşturuldu",
+                'description' => $charter->title . ' adlı tekne için rezervasyon talebi oluşturuldu.',
+                'subject_id' => $charter->getBooking()->latest()->first()->id,
+                'user' => $item,
+                'type' => 1
+            ]);
+            $notification->save();
+        }
+
+
+
 
         return response()->json([
             'createCharter' => $dates
@@ -354,17 +374,52 @@ class CharterController extends Controller
 
 
 
-
+     
+        //  0=>beklemede
+        //  1=>onaylandı 
+        //  2=>reddedildi
+        //  3=>iptal edildi 
+        
 
     public function bookingStatus(Request $request)
     {
 
-        $booking = Booking::with('getUser')->where('id', $request->id)->first();
+        $booking = Booking::with(['getUser','getCharter'])->where('id', $request->id)->first();
         $booking->fill([
             "status" => $request->status
         ]);
         $booking->save();
 
+         if($request->status==1){
+            $str= "onaylandı";
+
+         }elseif($request->status==2){
+            $str= "reddedildi";
+         }elseif($request->status==3){
+            $str= "iptal edildi ";
+         }
+
+      
+
+        $notifiArr = [];
+        array_push($notifiArr, $booking->getCharter->user);
+        array_push($notifiArr, $booking->user);
+
+        foreach (array_unique($notifiArr) as $item) {
+
+            $notification = new Notification();
+            $notification->fill([
+                'title' => "Rezervasyon talebi ".$str,
+                'description' => $booking->getCharter->title . ' adlı tekne için rezervasyon talebi '.$str,
+                'subject_id' => $booking->getCharter->id,
+                'user' => $item,
+                'type' => 1
+            ]);
+            $notification->save();
+        }
+
+
+ 
         return response()->json([
             'booking' => $booking
         ]);
@@ -380,51 +435,55 @@ class CharterController extends Controller
         if ($request->destination != null && $request->destination != 0) {
             array_push($filter, ['destination', '=', $request->destination]);
         }
+
+
         if ($request->type != null && $request->type != 0) {
             array_push($filter, ['type', '=', $request->type]);
         }
 
-        // if ($request->startDate != null) {
-
-        //     $from = \Carbon\Carbon::parse($request->startDate);
-        //     $to = \Carbon\Carbon::parse($request->get('to'));
-
-        //     $f = $from->format('d-m-Y');
-        //     $t = $to->format('d-m-Y');
-
-        //     $period = CarbonPeriod::create($f, $t);
-
-        //     foreach ($period as $date) {
-        //         array_push($filter, ['unavaliable_days', 'NOT LIKE', '%' . $date->format('d-m-Y') . '%']);
-        //     }
+        // if ($request->pax != null && $request->type != 0) {
+        //     array_push($filter, ['type', '=', $request->type]);
         // }
 
 
-        // if ($request->get('min') != null) {
-        //     array_push($filter, [$price, '>', ($request->get('min') / Cache::get('rates')['EUR'])-1]);
-        // }
-        // if ($request->get('max') != null && $request->get('max')<500000) {
-        //     array_push($filter, [$price, '<', ($request->get('max') / Cache::get('rates')['EUR'])+1]);
-        // }
+        if ($request->priceBegin != null) {
+            array_push($filter, [Carbon::parse($request->startDate)->format("n"), '>', ($request->get('min') / Cache::get('rates')['EUR']) - 1]);
+        }
+        if ($request->get('max') != null && $request->get('max') < 500000) {
+            array_push($filter, [$price, '<', ($request->get('max') / Cache::get('rates')['EUR']) + 1]);
+        }
 
         $start_date = Carbon::parse($request->startDate)->format("Y-m-d");
         $end_date = Carbon::parse($request->endDate)->format("Y-m-d");
         $period = CarbonPeriod::create($start_date, $end_date);
 
-        $charter = Charter::with(['getType', 'getBooking', 'getDestination', 'getPrice', 'getFeature', 'getPhotos', 'getSetting']) 
-      
+        $start_date_month = Carbon::parse($request->startDate)->format("n");
+        $priceBegin = $request->priceBegin;
+        $priceEnd = $request->priceEnd;
+        $pax = $request->pax;
+
+        $charter = Charter::with(['getType', 'getBooking', 'getDestination', 'getPrice', 'getFeature', 'getPhotos', 'getSetting'])
+
             ->where($filter)
 
             ->whereDoesntHave('getBooking', function ($q) use ($period) {
 
-               
-
                 foreach ($period as $date) {
-                    // array_push($filter, ['unavaliable_days', 'NOT LIKE', '%' . $date->format('d-m-Y') . '%']);
+
                     $q->where('dates', "LIKE", '%' . Carbon::parse($date)->format("Y-m-d") . '%');
                 }
+            })
 
-           
+            ->whereHas('getPrice', function ($q) use ($start_date_month, $priceBegin, $priceEnd) {
+
+
+                $q->whereBetween($start_date_month, [$priceBegin, $priceEnd]);
+            })
+
+            ->whereHas('getFeature', function ($q) use ($pax) {
+
+
+                $q->where('feature', 22)->where('value', '>=', $pax);
             })
 
             ->get();
@@ -436,4 +495,22 @@ class CharterController extends Controller
             'charter' => $charter,
         ]);
     }
+
+
+    public function getNotification(Request $request)
+    {
+
+        $notification = Notification::where('user', $request->user()->id)->get();
+
+        return response()->json([
+            'notification' => $notification
+
+        ]);
+    }
+
+
+
+
+
+
 }

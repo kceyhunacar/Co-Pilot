@@ -25,6 +25,10 @@ class Booking extends Model
     {
         return $this->hasOne(User::class, 'id', 'user');
     }
+    public function getCharter()
+    {
+        return $this->hasOne(Charter::class, 'id', 'charter');
+    }
 
 
 }

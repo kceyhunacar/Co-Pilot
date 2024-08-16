@@ -36,6 +36,7 @@ use Illuminate\Support\Facades\Route;
  
 
 Route::get('/', [HomeController::class, 'redirectAdmin'])->name('index');
+Route::get('/gizlilik-politikasi', [HomeController::class, 'gizlilik'])->name('gizlilik');
 Route::get('/home', [HomeController::class, 'index'])->name('home');
 
 /**

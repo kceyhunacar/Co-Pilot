@@ -40,6 +40,10 @@ class AuthController extends Controller
             'token'  => $token,
             'name'  => $user->name,
             'id'  => $user->id,
+            'country_code'  => $user->country_code,
+            'phone'  => $user->phone,
+            'type'  => $user->type,
+            'email'  => $user->email,
             'status'  => "true",
             'token_type'    => 'Bearer'
         ]);
@@ -82,5 +86,72 @@ class AuthController extends Controller
             'token'  => $token,
             'token_type'    => 'Bearer'
         ]);
+    }
+    public function updateUser(Request $request)
+    {
+        // $validator = Validator::make($request->all(), [
+        //     'name'      => 'required|string|max:255',
+        //     'email'     => 'required|string|max:255|unique:users',
+        //     'password'  => 'required|string'
+        // ]);
+
+        // if ($validator->fails()) {
+        //     return response()->json($validator->errors());
+        // }
+
+
+        $user = User::where('id', $request->user()->id)->first();
+
+        $user->fill([
+            'name' => $request->name,
+            'phone' => $request->phone,
+            'country_code' => $request->country_code,
+
+        ]);
+        $user->save();
+
+
+        // $user = User::create([
+        //     'name'      => $request->name,
+        //     'email'     => $request->email,
+        //     'password'  => Hash::make($request->password)
+        // ]);
+
+        // $token = $user->createToken('auth_token')->plainTextToken;
+        return response()->json([
+
+
+            'name'  => $user->name,
+            'id'  => $user->id,
+            'country_code'  => $user->country_code,
+            'phone'  => $user->phone,
+
+            'email'  => $user->email,
+
+
+        ]);
+    }
+
+    public function updatePassword(Request $request)
+    {
+
+
+
+
+
+        if (!Hash::check($request->oldPassword, auth()->user()->password)) {
+            return response()->json("Girilen şifre doğru değildir.");
+        }
+        if ($request->password != $request->rePassword) {
+            return response()->json("Şifreler uyuşmamaktadır.");
+        }
+
+
+
+        User::whereId(auth()->user()->id)->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        return response()->json("success");
     }
 }

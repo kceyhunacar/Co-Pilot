@@ -16,6 +16,8 @@ use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Aws\S3\S3Client;
+use Aws\S3\Exception\S3Exception;
 
 class CharterController extends Controller
 {
@@ -145,6 +147,17 @@ class CharterController extends Controller
 
         ]);
     }
+    public function getBookingById(Request $request)
+    {
+
+        $booking = Booking::with(['getUser', 'getCharter'])->where('id', request()->get('id'))->first();
+
+
+        return response()->json([
+            'booking' => $booking
+
+        ]);
+    }
 
 
 
@@ -194,30 +207,63 @@ class CharterController extends Controller
 
         $charter->getPrice()->create($prices);
 
-        if ($request["image"]) {
-
-            foreach ($request["image"] as $photo) {
-
-                if ($photo['fileName'] == $request->highlighted) {
-                    $highlighted = 1;
-                } else {
-                    $highlighted = 0;
-                }
-
-                $image = $photo['base64'];
-                $imageName = uniqid() . '.' . (explode('/', $photo['mimeType']))[1];
-                \File::put(public_path() . '/data/uploads/charter/' . $imageName,   base64_decode($image));
-
-                $charter->getPhotos()->create([
-                    'path' =>  'data/uploads/charter/' . $imageName,
-                    'highlighted' =>  $highlighted
-                ]);
-            }
+        foreach ($request["image"] as $photo) {
+ 
+ 
+            $charter->getPhotos()->create([
+                'path' =>  'charter/' . $photo,
+                'highlighted' =>  $photo == $request->highlighted ? 1 : 0
+            ]);
         }
 
 
+        // if ($request["image"]) {
+
+        //     $s3 = new S3Client([
+        //         'version' => 'latest',
+        //         'region'  => env('AWS_DEFAULT_REGION'),
+        //         'credentials' => [
+        //             'key'    => env('AWS_ACCESS_KEY_ID'),
+        //             'secret' => env('AWS_SECRET_ACCESS_KEY'),
+        //         ]
+        //     ]);
+
+
+        //     foreach ($request["image"] as $photo) {
+
+        //         if ($photo['fileName'] == $request->highlighted) {
+        //             $highlighted = 1;
+        //         } else {
+        //             $highlighted = 0;
+        //         }
+
+        //         $image = $photo['base64'];
+        //         $imageName = uniqid() . '.' . (explode('/', $photo['mimeType']))[1];
+        //         // \File::put(public_path() . '/data/uploads/aa/' . $imageName,   base64_decode($image));
+
+
+
+
+        //         $s3->putObject([
+        //             'Bucket' => env('AWS_BUCKET'),
+        //             'Key'    =>  '/data/uploads/aa/' . $imageName,
+        //             'Body'   =>   base64_decode($image),
+        //             'ACL'    => 'public-read'
+        //         ]);
+
+
+
+
+        //         $charter->getPhotos()->create([
+        //             'path' =>  'data/uploads/charter/' . $imageName,
+        //             'highlighted' =>  $highlighted
+        //         ]);
+        //     }
+        // }
+
+
         return response()->json([
-            'createCharter' => $charter->id
+            'createCharter' => $request["image"]
         ]);
     }
 
@@ -374,32 +420,31 @@ class CharterController extends Controller
 
 
 
-     
-        //  0=>beklemede
-        //  1=>onaylandı 
-        //  2=>reddedildi
-        //  3=>iptal edildi 
-        
+
+    //  0=>beklemede
+    //  1=>onaylandı 
+    //  2=>reddedildi
+    //  3=>iptal edildi 
+
 
     public function bookingStatus(Request $request)
     {
 
-        $booking = Booking::with(['getUser','getCharter'])->where('id', $request->id)->first();
+        $booking = Booking::with(['getUser', 'getCharter'])->where('id', $request->id)->first();
         $booking->fill([
             "status" => $request->status
         ]);
         $booking->save();
 
-         if($request->status==1){
-            $str= "onaylandı";
+        if ($request->status == 1) {
+            $str = "onaylandı";
+        } elseif ($request->status == 2) {
+            $str = "reddedildi";
+        } elseif ($request->status == 3) {
+            $str = "iptal edildi ";
+        }
 
-         }elseif($request->status==2){
-            $str= "reddedildi";
-         }elseif($request->status==3){
-            $str= "iptal edildi ";
-         }
 
-      
 
         $notifiArr = [];
         array_push($notifiArr, $booking->getCharter->user);
@@ -409,8 +454,8 @@ class CharterController extends Controller
 
             $notification = new Notification();
             $notification->fill([
-                'title' => "Rezervasyon talebi ".$str,
-                'description' => $booking->getCharter->title . ' adlı tekne için rezervasyon talebi '.$str,
+                'title' => "Rezervasyon talebi " . $str,
+                'description' => $booking->getCharter->title . ' adlı tekne için rezervasyon talebi ' . $str,
                 'subject_id' => $booking->getCharter->id,
                 'user' => $item,
                 'type' => 1
@@ -419,7 +464,7 @@ class CharterController extends Controller
         }
 
 
- 
+
         return response()->json([
             'booking' => $booking
         ]);
@@ -507,10 +552,4 @@ class CharterController extends Controller
 
         ]);
     }
-
-
-
-
-
-
 }

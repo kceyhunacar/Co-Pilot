@@ -11,14 +11,19 @@ class HomeController extends Controller
      *
      * @return void
      */
-    public function __construct()
-    {
-        $this->middleware('auth');
-    }
+    // public function __construct()
+    // {
+    //     $this->middleware('auth');
+    // }
 
     public function redirectAdmin()
     {
         return redirect()->route('admin.dashboard');
+    }
+    public function gizlilik()
+    {
+     
+        return view('front.gizlilik');
     }
 
     /**

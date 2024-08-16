@@ -28,7 +28,7 @@
 
 
 
-    
+
     <div class="main-content-inner">
         <div class="row">
             <!-- data table start -->
@@ -39,36 +39,35 @@
                         <h4 class="header-title">Create New Destination</h4>
                         @include('backend.layouts.partials.messages')
  
-
                         <ul class="nav nav-tabs" id="myTab" role="tablist">
                             @foreach (config('app.locales') as $key => $value)
                                 <li class="nav-item">
-                                    <a class="nav-link {{ $loop->index == 0 ? 'show active' : '' }}" id="{{ $key }}-tab" data-toggle="tab" href="#{{ $key }}" role="tab"
-                                        aria-controls="{{ $key }}" aria-selected="true">{{ $value }}</a>
+                                    <a class="nav-link {{ $loop->index == 0 ? 'show active' : '' }}" id="{{ $key }}-tab" data-toggle="tab" href="#{{ $key }}"
+                                        role="tab" aria-controls="{{ $key }}" aria-selected="true">{{ $value }}</a>
                                 </li>
                             @endforeach
 
                         </ul>
 
-                        <form action="{{ route('admin.destination.store') }}" method="POST">
+                        <form action="{{ route('admin.destination.store') }}" method="POST" enctype="multipart/form-data">
                             @csrf
- 
+
 
                             <div class="tab-content mt-4" id="myTabContent">
                                 @foreach (config('app.locales') as $key => $value)
+                                    <div class="tab-pane fade {{ $loop->index == 0 ? 'show active' : '' }}" id="{{ $key }}" role="tabpanel"
+                                        aria-labelledby="{{ $key }}-tab">
+                                        <div class="form-row">
+                                            <div class="form-group col-md-6 col-sm-12">
+                                                <label for="name">Title</label>
+                                                <input destination="text" class="form-control" name="title[{{ $key }}]">
+                                            </div>
 
-                                <div class="tab-pane fade {{ $loop->index == 0 ? 'show active' : '' }}" id="{{ $key }}" role="tabpanel" aria-labelledby="{{ $key }}-tab">
-                                    <div class="form-row">
-                                        <div class="form-group col-md-6 col-sm-12">
-                                            <label for="name">Title</label>
-                                            <input destination="text" class="form-control" name="title[{{$key}}]">
                                         </div>
-
                                     </div>
-                                </div>
                                 @endforeach
 
- 
+<input type="file" name="image" >
                             </div>
                             <button destination="submit" class="btn btn-primary mt-4 pr-4 pl-4">Submit</button>
 
@@ -86,5 +85,3 @@
         </div>
     </div>
 @endsection
-
- 

@@ -7,10 +7,17 @@ use App\Models\Booking;
 use App\Models\Charter;
 use App\Models\CharterPhoto;
 use App\Models\Destination;
+use App\Models\ExpoPushToken;
 use App\Models\Feature;
 use App\Models\FeatureCategory;
 use App\Models\Notification;
 use App\Models\Type;
+use App\Models\User;
+use App\Models\Wishlist;
+use App\Notifications\ExpoPushNotification;
+use Aws\CommandPool;
+use Aws\Exception\AwsException;
+use Aws\ResultInterface;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -18,9 +25,84 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Aws\S3\S3Client;
 use Aws\S3\Exception\S3Exception;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class CharterController extends Controller
 {
+
+    function sendPushNotification(Request $request)
+    {
+
+
+        //    // Hangi kullanıcılara bildirim gönderileceğini belirleyin (örneğin, tüm kullanıcılar)
+        //    $users = User::whereHas('expoPushTokens')->get();
+
+        //    if ($users->isEmpty()) {
+        //        return response()->json(['error' => 'No users with valid push tokens found'], 404);
+        //    }
+
+        //    $notification = new ExpoPushNotification(
+        //        'Toplu Mesaj', // Bildirim başlığı
+        //        'Birden fazla kullanıcıya gönderilen bir mesaj', // Bildirim içeriği
+        //        ['customData' => 'Ekstra veri'] // Ekstra veri (opsiyonel)
+        //    );
+
+        //    // Toplu bildirim gönderimi
+        //    $notification->sendBulkNotifications($users);
+
+        //    return response()->json(['success' => 'Bulk notifications sent!']);
+
+
+
+        $user = User::find($request->user_id);
+
+        if (!$user || $user->expoPushTokens->isEmpty()) {
+            return response()->json(['error' => 'User not found or does not have push tokens'], 404);
+        }
+
+        $notification = new ExpoPushNotification(
+            'Yeni Mesaj', // Bildirim başlığı
+            'Bir mesajınız var!', // Bildirim içeriği
+            ['customData' => 'Ekstra veri'] // Ekstra veri (opsiyonel)
+        );
+        $notification->sendExpoNotification($user);
+
+        return response()->json(['success' => 'Notification sent!']);
+    }
+
+    public function saveToken(Request $request)
+    {
+        // Verileri doğrula
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'expo_push_token' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'details' => $validator->errors()], 400);
+        }
+
+        $user_id = $request->user_id;
+        $expo_push_token = $request->expo_push_token;
+
+        // Kullanıcıyı bul
+        $user = User::find($user_id);
+
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        // Yeni token'ı ekle
+        ExpoPushToken::updateOrCreate(
+            ['expo_push_token' => $expo_push_token],
+            ['user_id' => $user_id]
+        );
+
+        return response()->json(['success' => 'Token saved or updated!']);
+    }
+
 
     public function getFeatures()
     {
@@ -50,9 +132,18 @@ class CharterController extends Controller
     public function getCharterWithPriceBooking(Request $request)
     {
 
-        $charter = Charter::with(['getPrice', 'getBooking.getUser', 'getSetting'])->where('user', $request->user()->id)->get();
+        $charter = Charter::with(['getPrice', 'getBooking.getUser', 'getBooking.getCharter.getUser', 'getSetting'])->where('user', $request->user()->id)->get();
         return response()->json([
             'charter' => $charter,
+        ]);
+    }
+
+    public function getBookingAgency(Request $request)
+    {
+
+        $booking = Booking::with(['getCharter.getUser', 'getUser'])->where('user', $request->user()->id)->latest()->get();
+        return response()->json([
+            'booking' => $booking,
         ]);
     }
 
@@ -68,10 +159,32 @@ class CharterController extends Controller
 
     public function charterPhotoDelete(Request $request)
     {
-        $model = CharterPhoto::find($request->id);
+        $photo = CharterPhoto::find($request->id);
 
-        if ($model->forceDelete()) {
-            @unlink(public_path($model->path));
+        $sourceBucket = env('AWS_BUCKET');
+        $sourceKeyname = $photo->path;
+        $targetKeyname = "deleted/" . (explode('/', $photo->path))[1];
+        $targetBucket = env('AWS_BUCKET');
+
+        $s3 = new S3Client([
+            'version' => 'latest',
+            'region'  => env('AWS_DEFAULT_REGION'),
+
+        ]);
+
+        $s3->copyObject([
+            'Bucket' => $targetBucket,
+            'Key' => "$targetKeyname",
+            'CopySource' => "$sourceBucket/$sourceKeyname",
+        ]);
+
+        $s3->deleteObject(array(
+            'Bucket' => $sourceBucket,
+            'Key'    => $sourceKeyname
+        ));
+
+        if ($photo->delete()) {
+
             return json_encode([
                 'status' => 'success'
             ]);
@@ -167,15 +280,12 @@ class CharterController extends Controller
 
         $charter = new Charter();
 
-        $destination = Destination::where('title', "LIKE", '%' . $request->destination . '%')->first();
-        $type = Type::where('title', "LIKE", '%' . $request->type . '%')->first();
-
         $charter->fill([
             'title' => $request->title,
             'description' => $request->description,
-            'type' => $type->id,
+            'type' => $request->type,
+            'destination' => $request->destination,
             'user' => $request->user()->id,
-            'destination' => $destination->id,
             'status' => 2,
         ]);
         $charter->save();
@@ -208,8 +318,8 @@ class CharterController extends Controller
         $charter->getPrice()->create($prices);
 
         foreach ($request["image"] as $photo) {
- 
- 
+
+
             $charter->getPhotos()->create([
                 'path' =>  'charter/' . $photo,
                 'highlighted' =>  $photo == $request->highlighted ? 1 : 0
@@ -217,53 +327,8 @@ class CharterController extends Controller
         }
 
 
-        // if ($request["image"]) {
-
-        //     $s3 = new S3Client([
-        //         'version' => 'latest',
-        //         'region'  => env('AWS_DEFAULT_REGION'),
-        //         'credentials' => [
-        //             'key'    => env('AWS_ACCESS_KEY_ID'),
-        //             'secret' => env('AWS_SECRET_ACCESS_KEY'),
-        //         ]
-        //     ]);
-
-
-        //     foreach ($request["image"] as $photo) {
-
-        //         if ($photo['fileName'] == $request->highlighted) {
-        //             $highlighted = 1;
-        //         } else {
-        //             $highlighted = 0;
-        //         }
-
-        //         $image = $photo['base64'];
-        //         $imageName = uniqid() . '.' . (explode('/', $photo['mimeType']))[1];
-        //         // \File::put(public_path() . '/data/uploads/aa/' . $imageName,   base64_decode($image));
-
-
-
-
-        //         $s3->putObject([
-        //             'Bucket' => env('AWS_BUCKET'),
-        //             'Key'    =>  '/data/uploads/aa/' . $imageName,
-        //             'Body'   =>   base64_decode($image),
-        //             'ACL'    => 'public-read'
-        //         ]);
-
-
-
-
-        //         $charter->getPhotos()->create([
-        //             'path' =>  'data/uploads/charter/' . $imageName,
-        //             'highlighted' =>  $highlighted
-        //         ]);
-        //     }
-        // }
-
-
         return response()->json([
-            'createCharter' => $request["image"]
+            'createCharter' => $charter->id
         ]);
     }
 
@@ -317,8 +382,9 @@ class CharterController extends Controller
         foreach ($request["price"] as $item) {
             $prices[$item['id']] = $item['value'];
         }
-
         $charter->getPrice()->updateOrCreate(['charter' => $charter->id], $prices);
+
+
         $charter->getSetting()->updateOrCreate(
             ['charter' => $charter->id],
             [
@@ -330,29 +396,50 @@ class CharterController extends Controller
             ]
         );
 
-        if ($request['highlighted']) {
-
-            $prevHighlighted = ($charter->getPhotos()->where('highlighted', 1)->first());
-            if ($prevHighlighted && $prevHighlighted->id != $request['highlighted']) {
-                $charter->getPhotos()->update(["highlighted" => 0]);
-            }
-            $nextHighlighted = CharterPhoto::find($request->highlighted);
-            $nextHighlighted->update(["highlighted" => 1]);
-        }
-
         if ($request['image']) {
-
-            foreach ($request['image'] as $photo) {
-
-                $image = $photo['base64'];
-                $imageName = uniqid() . '.' . (explode('/', $photo['mimeType']))[1];
-                \File::put(public_path() . '/data/uploads/charter/' . $imageName, base64_decode($image));
-
+            foreach ($request["image"] as $photo) {
                 $charter->getPhotos()->create([
-                    'path' =>  'data/uploads/charter/' . $imageName
+                    'path' =>  'charter/' . $photo,
+
                 ]);
             }
         }
+
+
+
+        if ($request['highlighted']) {
+
+            $prevHighlighted = $charter->getPhotos()->where('highlighted', 1)->first();
+
+
+            if ($prevHighlighted && $prevHighlighted->id != $request['highlighted']) {
+                $prevHighlighted->update(["highlighted" => 0]);
+            }
+
+            $nextHighlighted = CharterPhoto::find($request['highlighted']);
+            $nextHighlighted->update(["highlighted" => 1]);
+        } else {
+            $nextHighlighted = $charter->getPhotos()->first();
+            $nextHighlighted->update(["highlighted" => 1]);
+        }
+
+        // if ($request['image']) {
+
+        //     foreach ($request['image'] as $photo) {
+
+        //         $image = $photo['base64'];
+        //         $imageName = uniqid() . '.' . (explode('/', $photo['mimeType']))[1];
+        //         \File::put(public_path() . '/data/uploads/charter/' . $imageName, base64_decode($image));
+
+        //         $charter->getPhotos()->create([
+        //             'path' =>  'data/uploads/charter/' . $imageName
+        //         ]);
+        //     }
+        // }
+
+
+
+
 
         return response()->json([
             'createCharter' => $request['highlighted']
@@ -393,25 +480,31 @@ class CharterController extends Controller
             'dates' => json_encode($dates),
         ]);
 
-        $notifiArr = [];
-        array_push($notifiArr, $charter->user);
-        array_push($notifiArr, $request->user()->id);
-        foreach (array_unique($notifiArr) as $item) {
 
-            $notification = new Notification();
+        $user = User::find($charter->user);
 
-            $notification->fill([
-                'title' => "Rezervasyon Talebi Oluşturuldu",
-                'description' => $charter->title . ' adlı tekne için rezervasyon talebi oluşturuldu.',
-                'subject_id' => $charter->getBooking()->latest()->first()->id,
-                'user' => $item,
-                'type' => 1
-            ]);
-            $notification->save();
+        if (!$user || $user->expoPushTokens->isEmpty()) {
+            return response()->json(['error' => 'User not found or does not have push tokens'], 404);
         }
 
+        $notification = new ExpoPushNotification(
+            'Yeni Rezervasyon Talebi Oluşturuldu', // Bildirim başlığı
+            $charter->title . ' adlı tekne için rezervasyon talebi oluşturuldu.', // Bildirim içeriği
+            ['customData' => 'Ekstra veri'] // Ekstra veri (opsiyonel)
+        );
+        $notification->sendExpoNotification($user);
 
 
+        $notification = new Notification();
+
+        $notification->fill([
+            'title' => "Rezervasyon Talebi Oluşturuldu",
+            'description' => $charter->title . ' adlı tekne için rezervasyon talebi oluşturuldu.',
+            'subject_id' => $charter->getBooking()->latest()->first()->id,
+            'user' => $charter->user,
+            'type' => 1
+        ]);
+        $notification->save();
 
         return response()->json([
             'createCharter' => $dates
@@ -429,44 +522,70 @@ class CharterController extends Controller
 
     public function bookingStatus(Request $request)
     {
+        $notifiArr = [];
 
-        $booking = Booking::with(['getUser', 'getCharter'])->where('id', $request->id)->first();
+
+        $booking = Booking::with(['getUser', 'getCharter.getUser'])->where('id', $request->id)->first();
+        $current_status = $booking->status;
         $booking->fill([
             "status" => $request->status
-        ]);
+        ]); 
         $booking->save();
 
         if ($request->status == 1) {
-            $str = "onaylandı";
+            $str = "TALEBİ ONAYLANDI";
+            array_push($notifiArr, $booking->user);
         } elseif ($request->status == 2) {
-            $str = "reddedildi";
-        } elseif ($request->status == 3) {
-            $str = "iptal edildi ";
+            $str = "TALEBİ REDDEDİLDİ";
+       
+            array_push($notifiArr, $booking->user);
+        } elseif ($request->status == 3 && $current_status == 0) {
+            $str = "TALEBİ İPTAL EDİLDİ";
+     
+            array_push($notifiArr, $booking->getCharter->user);
+        } elseif ($request->status == 3 && $current_status == 1) {
+            $str = "İPTAL EDİLDİ";
+            array_push($notifiArr, $booking->user);
+  
         }
 
 
 
-        $notifiArr = [];
-        array_push($notifiArr, $booking->getCharter->user);
-        array_push($notifiArr, $booking->user);
 
         foreach (array_unique($notifiArr) as $item) {
 
-            $notification = new Notification();
-            $notification->fill([
-                'title' => "Rezervasyon talebi " . $str,
-                'description' => $booking->getCharter->title . ' adlı tekne için rezervasyon talebi ' . $str,
+            $user = User::find($item);
+
+            if (!$user || $user->expoPushTokens->isEmpty()) {
+                return response()->json(['error' => 'User not found or does not have push tokens'], 404);
+            }
+
+            $notification = new ExpoPushNotification(
+                'Rezervasyon ' . Str::title($str), // Bildirim başlığı
+                $booking->getCharter->title . ' adlı tekne için '. Carbon::parse($booking->check_in)->format('d-m-Y') .' tarihli rezervasyon ' . Str::lower($str), // Bildirim içeriği
+                [
+                    'route' => 'BookingDetail',
+                    'data' =>  json_encode(["booking"=>$booking]),
+                ]
+            );
+            $notification->sendExpoNotification($user);
+
+            $notifi = new Notification();
+            $notifi->fill([
+                'title' => 'Rezervasyon ' . Str::title($str),
+                'description' => $booking->getCharter->title . ' adlı tekne için rezervasyon ' . Str::lower($str),
                 'subject_id' => $booking->getCharter->id,
                 'user' => $item,
                 'type' => 1
             ]);
-            $notification->save();
+            $notifi->save();
         }
 
 
-
+   
         return response()->json([
-            'booking' => $booking
+            'booking' => $booking,
+         
         ]);
     }
 
@@ -486,24 +605,13 @@ class CharterController extends Controller
             array_push($filter, ['type', '=', $request->type]);
         }
 
-        // if ($request->pax != null && $request->type != 0) {
-        //     array_push($filter, ['type', '=', $request->type]);
-        // }
-
-
-        if ($request->priceBegin != null) {
-            array_push($filter, [Carbon::parse($request->startDate)->format("n"), '>', ($request->get('min') / Cache::get('rates')['EUR']) - 1]);
-        }
-        if ($request->get('max') != null && $request->get('max') < 500000) {
-            array_push($filter, [$price, '<', ($request->get('max') / Cache::get('rates')['EUR']) + 1]);
-        }
 
         $start_date = Carbon::parse($request->startDate)->format("Y-m-d");
         $end_date = Carbon::parse($request->endDate)->format("Y-m-d");
         $period = CarbonPeriod::create($start_date, $end_date);
 
         $start_date_month = Carbon::parse($request->startDate)->format("n");
-        $priceBegin = $request->priceBegin;
+        $priceBegin = $request->priceBegin == 0 ? 1 : $request->priceBegin;
         $priceEnd = $request->priceEnd;
         $pax = $request->pax;
 
@@ -551,5 +659,66 @@ class CharterController extends Controller
             'notification' => $notification
 
         ]);
+    }
+
+
+    public function addWishlist(Request $request)
+    {
+        $check = Wishlist::where('user', $request->user()->id)->where('charter', $request->charter)->first();
+
+        if ($check === null) {
+            // user doesn't exist
+
+
+
+            $wishlist = new Wishlist();
+            $wishlist->fill([
+                'user' => $request->user()->id,
+                'charter' => $request->charter
+            ]);
+            $wishlist->save();
+        }
+        return response()->json([
+            'status' => 'success'
+        ]);
+    }
+
+    public function getWishlist(Request $request)
+    {
+
+        $wishlist = Wishlist::where('user', $request->user()->id)->get();
+
+
+        return response()->json([
+            'wishlist' => $wishlist
+        ]);
+    }
+    public function getWishlistWithCharter(Request $request)
+    {
+
+        $wishlist = Wishlist::with(['getCharter.getPrice', 'getCharter.getFeature', 'getCharter.getSetting'])->where('user', $request->user()->id)->get();
+
+
+        return response()->json([
+            'wishlist' => $wishlist
+        ]);
+    }
+
+    public function deleteWishlist(Request $request)
+    {
+
+        $wishlist = Wishlist::where('user', $request->user()->id)->where('charter', $request->charter)->first();
+        if ($wishlist) {
+
+            $wishlist->delete();
+
+            return json_encode([
+                'status' => 'success'
+            ]);
+        } else {
+            return json_encode([
+                'status' => 'error'
+            ]);
+        }
     }
 }

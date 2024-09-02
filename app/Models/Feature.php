@@ -13,7 +13,7 @@ use Spatie\Translatable\HasTranslations;
 
 class Feature extends Model
 {
-    use HasFactory,HasTranslations,SoftDeletes, LogsActivity,TranslateMethods;
+    use HasFactory, HasTranslations, SoftDeletes, LogsActivity, TranslateMethods;
 
     protected $guarded = [];
     public $translatable = ['title'];
@@ -33,10 +33,9 @@ class Feature extends Model
     public static function booted()
     {
         static::addGlobalScope('order', function (Builder $builder) {
-            $builder->orderBy('sort','ASC');
+            $builder->orderBy('sort', 'ASC');
         });
     }
 
-   
-
+  
 }

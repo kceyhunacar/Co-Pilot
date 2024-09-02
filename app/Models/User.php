@@ -69,4 +69,9 @@ class User extends Authenticatable
         }
         return $hasPermission;
     }
+    
+    public function expoPushTokens()
+    {
+        return $this->hasMany(ExpoPushToken::class);
+    }
 }

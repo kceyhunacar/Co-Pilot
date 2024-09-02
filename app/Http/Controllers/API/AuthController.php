@@ -14,21 +14,31 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email'     => 'required|string|max:255',
-            'password'  => 'required|string'
-        ]);
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'email'     => 'required|email:rfc,dns',
+                'password'  => 'required|string'
+            ],
+            [
+                'email.required' => 'Lütfen e-mail alanını doldurunuz.',
+                'email.email' => 'Lütfen geçerli bir e-mail hesabı giriniz.',
+                'password.required'  => 'Lütfen şifre alanını doldurunuz.'
+            ]
+
+
+        );
         if ($validator->fails()) {
-            return response()->json($validator->errors());
+            return response()->json($validator->errors()->first(), 400);
         }
 
 
         $credentials = $request->only('email', 'password');
 
         if (!Auth::attempt($credentials)) {
-            return response()->json([
-                'message' => 'User not found'
-            ], 401);
+            return response()->json( 
+                 'E-mail veya şifre hatalı.'
+             , 400);
         }
 
 
@@ -36,7 +46,7 @@ class AuthController extends Controller
         $token  = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Login success',
+            'message' => 'success',
             'token'  => $token,
             'name'  => $user->name,
             'id'  => $user->id,
@@ -135,18 +145,12 @@ class AuthController extends Controller
     public function updatePassword(Request $request)
     {
 
-
-
-
-
         if (!Hash::check($request->oldPassword, auth()->user()->password)) {
             return response()->json("Girilen şifre doğru değildir.");
         }
         if ($request->password != $request->rePassword) {
             return response()->json("Şifreler uyuşmamaktadır.");
         }
-
-
 
         User::whereId(auth()->user()->id)->update([
             'password' => Hash::make($request->password)

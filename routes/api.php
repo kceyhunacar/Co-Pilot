@@ -26,7 +26,8 @@ Route::get('/getFeatures', [CharterController::class, 'getFeatures']);
 Route::get('/getDestinations', [CharterController::class, 'getDestinations']);
 Route::get('/getTypes', [CharterController::class, 'getTypes']);
 Route::get('/getQuantityInput', [CharterController::class, 'getQuantityInput']);
-
+Route::post('/sendPushNotification', [CharterController::class, 'sendPushNotification']);
+Route::post('/save-token', [CharterController::class, 'saveToken']);
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -35,7 +36,7 @@ Route::get('/getCharterByIdWithoutUser', [CharterController::class, 'getCharterB
 Route::get('/getCharterHighlighted', [CharterController::class, 'getCharterHighlighted']);
 Route::get('/getBookingById', [CharterController::class, 'getBookingById']);
 Route::post('/getCharterFiltered', [CharterController::class, 'getCharterFiltered']);
-Route::group(["middleware"=>['auth:sanctum']], function () {
+Route::group(["middleware" => ['auth:sanctum']], function () {
     Route::post('/createCharter', [CharterController::class, 'createCharter']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/updateUser', [AuthController::class, 'updateUser']);
@@ -50,7 +51,9 @@ Route::group(["middleware"=>['auth:sanctum']], function () {
     Route::post('/updateCharter', [CharterController::class, 'updateCharter']);
     Route::post('/createBooking', [CharterController::class, 'createBooking']);
     Route::post('/bookingStatus', [CharterController::class, 'bookingStatus']);
- 
-
-
+    Route::post('/deleteWishlist', [CharterController::class, 'deleteWishlist']);
+    Route::post('/addWishlist', [CharterController::class, 'addWishlist']);
+    Route::get('/getBookingAgency', [CharterController::class, 'getBookingAgency']);
+    Route::get('/getWishlist', [CharterController::class, 'getWishlist']);
+    Route::get('/getWishlistWithCharter', [CharterController::class, 'getWishlistWithCharter']);
 });

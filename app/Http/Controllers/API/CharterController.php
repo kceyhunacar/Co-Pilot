@@ -263,7 +263,7 @@ class CharterController extends Controller
     public function getBookingById(Request $request)
     {
 
-        $booking = Booking::with(['getUser', 'getCharter'])->where('id', request()->get('id'))->first();
+        $booking = Booking::with(['getUser', 'getCharter', 'getCharter.getUser'])->where('id', request()->get('id'))->first();
 
 
         return response()->json([
@@ -460,7 +460,7 @@ class CharterController extends Controller
         $current = strtotime(Carbon::parse($request->check_in)->format('Y-m-d'));
         $date2 = strtotime(Carbon::parse($request->check_out)->format('Y-m-d'));
         $stepVal = '+1 day';
-        while ($current <= $date2) {
+        while ($current < $date2) {
             $dates[] = date('Y-m-d', $current);
             $current = strtotime($stepVal, $current);
         }
@@ -489,7 +489,7 @@ class CharterController extends Controller
 
         $notification = new ExpoPushNotification(
             'Yeni Rezervasyon Talebi Oluşturuldu', // Bildirim başlığı
-            $charter->title . ' adlı tekne için rezervasyon talebi oluşturuldu.', // Bildirim içeriği
+            $charter->title . ' adlı tekne için ' . $charter->id . ' kodlu, rezervasyon talebi oluşturuldu.', // Bildirim içeriği
             ['customData' => 'Ekstra veri'] // Ekstra veri (opsiyonel)
         );
         $notification->sendExpoNotification($user);
@@ -499,7 +499,7 @@ class CharterController extends Controller
 
         $notification->fill([
             'title' => "Rezervasyon Talebi Oluşturuldu",
-            'description' => $charter->title . ' adlı tekne için rezervasyon talebi oluşturuldu.',
+            'description' => $charter->title . ' adlı tekne için ' . $charter->id . ' kodlu, rezervasyon talebi oluşturuldu.',
             'subject_id' => $charter->getBooking()->latest()->first()->id,
             'user' => $charter->user,
             'type' => 1
@@ -529,7 +529,7 @@ class CharterController extends Controller
         $current_status = $booking->status;
         $booking->fill([
             "status" => $request->status
-        ]); 
+        ]);
         $booking->save();
 
         if ($request->status == 1) {
@@ -537,16 +537,15 @@ class CharterController extends Controller
             array_push($notifiArr, $booking->user);
         } elseif ($request->status == 2) {
             $str = "TALEBİ REDDEDİLDİ";
-       
+
             array_push($notifiArr, $booking->user);
         } elseif ($request->status == 3 && $current_status == 0) {
             $str = "TALEBİ İPTAL EDİLDİ";
-     
+
             array_push($notifiArr, $booking->getCharter->user);
         } elseif ($request->status == 3 && $current_status == 1) {
             $str = "İPTAL EDİLDİ";
             array_push($notifiArr, $booking->user);
-  
         }
 
 
@@ -562,10 +561,10 @@ class CharterController extends Controller
 
             $notification = new ExpoPushNotification(
                 'Rezervasyon ' . Str::title($str), // Bildirim başlığı
-                $booking->getCharter->title . ' adlı tekne için '. Carbon::parse($booking->check_in)->format('d-m-Y') .' tarihli rezervasyon ' . Str::lower($str), // Bildirim içeriği
+                $booking->getCharter->title . ' adlı tekne için ' . $booking->id . ' kodlu, ' . Carbon::parse($booking->check_in)->format('d-m-Y') . ' tarihli rezervasyon ' . Str::lower($str), // Bildirim içeriği
                 [
                     'route' => 'BookingDetail',
-                    'data' =>  json_encode(["booking"=>$booking]),
+                    'data' =>  json_encode(["booking" => $booking]),
                 ]
             );
             $notification->sendExpoNotification($user);
@@ -573,7 +572,7 @@ class CharterController extends Controller
             $notifi = new Notification();
             $notifi->fill([
                 'title' => 'Rezervasyon ' . Str::title($str),
-                'description' => $booking->getCharter->title . ' adlı tekne için rezervasyon ' . Str::lower($str),
+                'description' => $booking->getCharter->title . ' adlı tekne için ' . $booking->id . ' kodlu, ' . Carbon::parse($booking->check_in)->format('d-m-Y') . ' tarihli rezervasyon ' . Str::lower($str),
                 'subject_id' => $booking->getCharter->id,
                 'user' => $item,
                 'type' => 1
@@ -582,10 +581,10 @@ class CharterController extends Controller
         }
 
 
-   
+
         return response()->json([
             'booking' => $booking,
-         
+
         ]);
     }
 

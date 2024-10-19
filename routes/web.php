@@ -12,6 +12,7 @@ use App\Http\Controllers\Backend\FeatureController;
  
 use App\Http\Controllers\Backend\RolesController;
 use App\Http\Controllers\Backend\TypeController;
+use App\Http\Controllers\Backend\UserController;
 use App\Http\Controllers\Backend\UsersController;
  
 use App\Http\Controllers\HomeController;
@@ -66,6 +67,9 @@ Route::group(['prefix' => 'admin'], function () {
 
     Route::resource('destination', DestinationController::class, ['names' => 'admin.destination']);
     Route::get('/destination/delete/{id?}', [DestinationController::class, 'delete'])->name('admin.destination.delete');
+
+    Route::resource('user', UserController::class, ['names' => 'admin.user']);
+    Route::get('/user/delete/{id?}', [UserController::class, 'delete'])->name('admin.user.delete');
 
     Route::resource('type', TypeController::class, ['names' => 'admin.type']);
     Route::get('/type/delete/{id?}', [TypeController::class, 'delete'])->name('admin.type.delete');

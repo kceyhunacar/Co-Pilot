@@ -26,6 +26,7 @@
                      @endif
 
 
+                
                      <li>
                          <a href="javascript:void(0)" aria-expanded="true"><i class="fa fa-tasks"></i><span>
                                  Charter
@@ -38,7 +39,18 @@
                              <li class="{{ Route::is('admin.charter.create') ? 'active' : '' }}"><a href="{{ route('admin.charter.create') }}">Create Charter</a></li>
                          </ul>
                      </li>
-
+                     <li>
+                        <a href="javascript:void(0)" aria-expanded="true"><i class="fa fa-tasks"></i><span>
+                                User
+                            </span></a>
+                        <ul
+                            class="collapse {{ Route::is('admin.user.create') || Route::is('admin.user.index') || Route::is('admin.user.edit') || Route::is('admin.user.show') ? 'in' : '' }}">
+                            <li class="{{ Route::is('admin.user.index') || Route::is('admin.user.edit') ? 'active' : '' }}">
+                                <a href="{{ route('admin.user.index') }}">All Users</a>
+                            </li>
+                            <li class="{{ Route::is('admin.user.create') ? 'active' : '' }}"><a href="{{ route('admin.user.create') }}">Create User</a></li>
+                        </ul>
+                        </li>
 
                      <li>
                          <a href="javascript:void(0)" aria-expanded="true"><i class="fa fa-tasks"></i><span>
